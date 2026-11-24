@@ -39,6 +39,17 @@ Tests: `python -m unittest discover tests`
   snapshots cover roughly 2,000 profiles; raise the interval or `MAX_TRACKED_PROFILES` accordingly.
   Profiles nobody opens for `INACTIVE_AFTER_DAYS` stop being snapshotted.
 
+## Live page updates
+
+The static page at yarnediopere.dev/playtime is rebuilt by `.github/workflows/update-site.yml`:
+
+- every 15 minutes on GitHub's schedule (best effort: GitHub can start runs late or skip them), and
+- about 90 seconds after you close a Steam game, by `scripts/steam_watcher.py`. It runs hidden at
+  Windows sign-in from the shortcut `Playtime Ledger watcher.lnk` in your Startup folder
+  (`shell:startup`), uses your existing `gh` login, and logs to `data/watcher.log`.
+  To turn it off, delete that shortcut and end the `pythonw.exe` process.
+  `python scripts/steam_watcher.py --test` triggers one update by hand.
+
 ## Project layout
 
 ```
