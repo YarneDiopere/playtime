@@ -1,10 +1,13 @@
-# Hourly: take a playtime snapshot, rebuild the static page, publish it to GitHub Pages.
+# Every 15 minutes (and when scripts/steam_watcher.py sees a game close): take a playtime
+# snapshot, rebuild the static page, publish it to GitHub Pages.
 # The tracker database lives on the `data` branch (one commit, force-pushed each run).
 name: Update playtime page
 
 on:
   schedule:
-    - cron: "17 * * * *"   # every hour (GitHub may start scheduled runs a few minutes late)
+    # GitHub runs schedules on a best-effort basis (late or skipped under load), so try often.
+    # Off the :00/:15 marks, which are GitHub's busiest minutes.
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
   push:
     branches: [main]
