@@ -1,0 +1,68 @@
+# Hourly: take a playtime snapshot, rebuild the static page, publish it to GitHub Pages.
+# The tracker database lives on the `data` branch (one commit, force-pushed each run).
+name: Update playtime page
+
+on:
+  schedule:
+    - cron: "17 * * * *"   # every hour (GitHub may start scheduled runs a few minutes late)
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write   # push the database to the data branch
+  pages: write
+  id-token: write
+
+concurrency:
+  group: update-site
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore database from the data branch
+        run: |
+          mkdir -p data
+          if git fetch --depth=1 origin data 2>/dev/null; then
+            git show FETCH_HEAD:tracker.db > data/tracker.db
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Snapshot and build
+        env:
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
+          SECRET_KEY: build-only
+          STATIC_ACCOUNTS: ${{ vars.STATIC_ACCOUNTS }}
+          STATIC_REGION: ${{ vars.STATIC_REGION || 'de' }}
+          STATIC_TZ: Europe/Brussels
+        run: python scripts/build_static.py
+
+      - name: Save database to the data branch
+        run: |
+          cd data
+          git init -q -b data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tracker.db
+          git commit -q -m "Tracker database $(date -u +%FT%TZ)"
+          git push -q --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data:data
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
